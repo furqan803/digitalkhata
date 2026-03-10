@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export function LoginPage() {
-  const { setIsLoggedIn, setCurrentUserRole, settings, t, setShopNameFromLogin } = useApp();
+  const { login, settings, t } = useApp();
   const [role, setRole] = useState<'admin' | 'staff'>('admin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -18,17 +18,14 @@ export function LoginPage() {
       if (settings.appLockPin) {
         // App lock is enabled
         if (pin === settings.appLockPin) {
-          setIsLoggedIn(true);
-          setCurrentUserRole('admin');
+          login('admin', 'admin'); // If app lock is on, we use 'admin' as username for storage
         } else {
           setError('Invalid Admin PIN');
         }
       } else {
         // Normal mockup login
         if (username && password) {
-          setShopNameFromLogin(username);
-          setIsLoggedIn(true);
-          setCurrentUserRole('admin');
+          login(username, 'admin');
         } else {
           setError('Please enter username and password');
         }
@@ -37,8 +34,7 @@ export function LoginPage() {
       // Staff login
       const staff = settings.staffAccounts.find(s => s.id === selectedStaffId);
       if (staff && staff.pin === pin) {
-        setIsLoggedIn(true);
-        setCurrentUserRole('staff');
+        login(staff.name, 'staff');
       } else {
         setError('Invalid Staff selection or PIN');
       }

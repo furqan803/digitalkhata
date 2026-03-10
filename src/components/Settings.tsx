@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export function Settings() {
-  const { settings, updateSettings, setIsLoggedIn, currentUserRole, t } = useApp();
+  const { settings, updateSettings, logout, currentUserRole, t } = useApp();
   const [showShopNameModal, setShowShopNameModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showAppLockModal, setShowAppLockModal] = useState(false);
@@ -340,7 +340,7 @@ export function Settings() {
 
         {/* Logout */}
         <button
-          onClick={() => setIsLoggedIn(false)}
+          onClick={logout}
           className="w-full mt-4 py-3 bg-red-50 text-red-600 font-medium rounded-xl flex items-center justify-center"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

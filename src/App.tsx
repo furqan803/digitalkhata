@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { LoginPage } from './components/LoginPage';
 import { CustomerList } from './components/CustomerList';
@@ -9,6 +10,29 @@ import { BottomNav } from './components/BottomNav';
 
 function AppContent() {
   const { isLoggedIn, activeTab, selectedCustomer } = useApp();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // If the height decreases significantly, the keyboard is likely open
+      if (window.visualViewport) {
+        // More accurate for modern mobile browsers
+        const isVisible = window.visualViewport.height < window.innerHeight * 0.75;
+        setIsKeyboardVisible(isVisible);
+      } else {
+        const isVisible = window.innerHeight < 500; // rough estimate
+        setIsKeyboardVisible(isVisible);
+      }
+    };
+
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   if (!isLoggedIn) {
     return <LoginPage />;
@@ -34,11 +58,11 @@ function AppContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50 shadow-2xl overflow-hidden">
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50 dark:bg-gray-950 shadow-2xl overflow-hidden transition-colors duration-500">
       <main className="flex-1 overflow-hidden flex flex-col">
         {renderContent()}
       </main>
-      <BottomNav />
+      {!isKeyboardVisible && <BottomNav />}
     </div>
   );
 }

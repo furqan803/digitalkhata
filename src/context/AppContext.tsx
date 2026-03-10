@@ -22,6 +22,8 @@ interface AppContextType {
   updateSettings: (settings: Partial<AppSettings>) => void;
   setShopNameFromLogin: (username: string) => void;
   t: (key: string) => string;
+  logout: () => void;
+  login: (username: string, role: 'admin' | 'staff') => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -215,42 +217,84 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>('');
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>('admin');
   const [activeTab, setActiveTab] = useState<TabType>('customers');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
-  const setShopNameFromLogin = (username: string) => {
-    setSettings(prev => ({ ...prev, shopName: username }));
+
+  const logout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser('');
+    setCustomers([]);
+    setNotes([]);
+    setSelectedCustomer(null);
+    setActiveTab('customers');
+    // We don't necessarily clear settings as they might be global, 
+    // but we reset them to default if needed.
+    // setSettings(defaultSettings);
   };
 
-  useEffect(() => {
-    const savedCustomers = localStorage.getItem('khata_customers');
-    const savedNotes = localStorage.getItem('khata_notes');
-    const savedSettings = localStorage.getItem('khata_settings');
+  const login = (username: string, role: 'admin' | 'staff') => {
+    setCurrentUser(username);
+    setCurrentUserRole(role);
+    setIsLoggedIn(true);
+    if (role === 'admin') {
+      setSettings(prev => ({ ...prev, shopName: username }));
+    }
+  };
 
-    if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
-    if (savedNotes) setNotes(JSON.parse(savedNotes));
-    if (savedSettings) setSettings(JSON.parse(savedSettings));
-  }, []);
+  // Load data when currentUser changes
+  useEffect(() => {
+    if (isLoggedIn && currentUser) {
+      const userKey = currentUserRole === 'admin' ? currentUser : 'staff';
+      // For simplicity, lets use username as key for admin, and shared key for staff or specific staff id
+      const prefix = `khata_${currentUser}_`;
+
+      const savedCustomers = localStorage.getItem(`${prefix}customers`);
+      const savedNotes = localStorage.getItem(`${prefix}notes`);
+      const savedSettings = localStorage.getItem(`${prefix}settings`);
+
+      if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
+      else setCustomers([]);
+
+      if (savedNotes) setNotes(JSON.parse(savedNotes));
+      else setNotes([]);
+
+      if (savedSettings) setSettings(JSON.parse(savedSettings));
+      else setSettings(defaultSettings);
+    }
+  }, [isLoggedIn, currentUser]);
+
+  // Save data when it changes
+  useEffect(() => {
+    if (isLoggedIn && currentUser) {
+      const prefix = `khata_${currentUser}_`;
+      localStorage.setItem(`${prefix}customers`, JSON.stringify(customers));
+    }
+  }, [customers, isLoggedIn, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('khata_customers', JSON.stringify(customers));
-  }, [customers]);
+    if (isLoggedIn && currentUser) {
+      const prefix = `khata_${currentUser}_`;
+      localStorage.setItem(`${prefix}notes`, JSON.stringify(notes));
+    }
+  }, [notes, isLoggedIn, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('khata_notes', JSON.stringify(notes));
-  }, [notes]);
+    if (isLoggedIn && currentUser) {
+      const prefix = `khata_${currentUser}_`;
+      localStorage.setItem(`${prefix}settings`, JSON.stringify(settings));
+    }
 
-  useEffect(() => {
-    localStorage.setItem('khata_settings', JSON.stringify(settings));
     if (settings.darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [settings]);
+  }, [settings, isLoggedIn, currentUser]);
 
   const addCustomer = (customer: Customer) => {
     setCustomers(prev => [...prev, customer]);
@@ -309,8 +353,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteNote,
       settings,
       updateSettings,
-      setShopNameFromLogin,
+      setShopNameFromLogin: (username) => login(username, 'admin'),
       t,
+      logout,
+      login,
     }}>
       {children}
     </AppContext.Provider>
